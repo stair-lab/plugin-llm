@@ -1,0 +1,24 @@
+data:
+  dataset_name : 'e2e_nlg_cleaned'
+  dataset_version : null
+  input_size : 128
+  target_size : 128
+  hyper_train_size : 0.2
+  split_data_name : 'train' # if split_data_name is not None, then tags not needed
+  train_tag : None
+  validation_tag : None
+
+model:
+  trained_model_name : 'w_prompt_ft_text_completion'
+  base_model_name : 'gpt2-medium'
+  num_train_epochs : 5
+  early_stopping_flag : True
+  early_stopping_patience : 3
+  early_stopping_threshold : 0.0001
+  warmup_fraction : 0.1
+  padding_side : 'left'
+  print_prediction_flag : False
+
+results_dir : '../results/'
+logs_dir : '../logs/'
+models_dir : '../models/'

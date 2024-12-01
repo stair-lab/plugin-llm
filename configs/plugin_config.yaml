@@ -1,0 +1,38 @@
+data:
+  dataset_name : 'e2e_nlg_cleaned'
+  dataset_version : null
+  input_size : 128
+  target_size : 128
+  hyper_train_size : 0.4
+  split_data_name : 'validation' # if split_data_name is not None, then tags not needed
+  train_tag : null
+  validation_tag : null
+
+model:
+  trained_model_name : 'e2e_nlg_plugin_gpt2-xl_1layer'
+  base_model_name : 'gpt2-xl' # meta-llama/Llama-3.1-8B, gpt2-medium, gpt2-xl
+  num_train_epochs : 80
+  early_stopping_flag : True
+  early_stopping_patience : 3
+  early_stopping_threshold : 0.0001
+  warmup_fraction : 0.1
+  padding_side : 'left'
+  print_prediction_flag : False
+  
+plugin_model:
+  llama: 
+    name : null
+    num_hidden_layers : 1
+    vocab_size : 128256
+    hidden_size : 256
+    num_attention_heads : 1
+    intermediate_size : 1024
+  gpt2:
+    name : null
+    n_layer : 1
+
+access_token: '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'
+
+results_dir : '../results/'
+logs_dir : '../logs/'
+models_dir : '../models/'
