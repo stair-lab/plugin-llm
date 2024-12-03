@@ -10,6 +10,9 @@ class ProcessedDataset():
     def __init__(self, name, base_model_name):
         self.name = name
         self.base_model_name = base_model_name
+        print("***")
+        print("Start loading dataset")
+        print("***")
         if(name == 'web_nlg'):
             self.data = load_dataset(name, 'webnlg_challenge_2017', trust_remote_code=True)
         else:
@@ -21,6 +24,9 @@ class ProcessedDataset():
             self.data = process_web_nlg(self.data, self.base_model_name)
         elif(name == 'common_gen'):
             self.data = process_common_gen(self.data, self.base_model_name)
+        print("***")
+        print("Finish loading dataset")
+        print("***")
 
     # Preprocess the dataset to include the meaning representation (MR) as input and human reference as target
     def preprocess_sep_input_target(self, examples, tokenizer, 
