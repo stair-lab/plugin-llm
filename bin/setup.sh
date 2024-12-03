@@ -1,4 +1,10 @@
 #!/bin/bash
+
+# cd
+# sudo apt install -y python3.11
+# sudo apt install -y python3.11-venv
+# python3.11 -m venv statml
+# source statml/bin/activate
 # Ensure the script exits immediately if a command fails
 set -e
 
@@ -20,10 +26,8 @@ pip install nltk rouge_score
 
 echo "Installation complete!"
 # cd
-# sudo apt install -y python3.11
-# sudo apt install -y python3.11-venv
-# python3.11 -m venv statml
-# source statml/bin/activate
+# deactivate
+
 
 # pip install torch==2.4
 # pip install pyyaml transformers pandas datasets scikit-learn tensorboardX
@@ -38,6 +42,5 @@ echo "Installation complete!"
 
 # pip install nltk rouge_score
 
-# cd
-# deactivate
+
 
