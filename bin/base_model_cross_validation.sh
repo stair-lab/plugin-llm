@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #SBATCH --output=./logs/base_model_cross_validation.out
-#SBATCH --gres=gpu:a100l:4
-#SBATCH --ntasks=4
+#SBATCH --gres=gpu:a100l:1
+#SBATCH --ntasks=1
 #SBATCH --time=10:00:00
 #SBATCH --cpus-per-task=4
 #SBATCH --mem-per-gpu=40G
@@ -18,7 +18,7 @@ weight_decays=(0.01 0.001)
 # Seed for reproducibility
 seed=42
 
-batch_size=8
+batch_size=4
 
 # File to store resultss
 results_file="./results/base_model_cross_validation_results.txt"
