@@ -1,1 +1,7 @@
 statml/
+*.out
+*.txt
+*.log
+*.csv
+*.json
+*.yaml

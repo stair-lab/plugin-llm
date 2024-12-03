@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Hyperparameter search space
-learning_rates=(5e-6 5e-5 5e-4)
+learning_rates=(5e-5)
 weight_decays=(0.01 0.001)
 
 # Seed for reproducibility
@@ -23,7 +23,7 @@ for lr in "${learning_rates[@]}"; do
       
         # Run the training script with current hyperparameters
         echo "Running with learning_rate=$lr, weight_decay=$wd"
-        output=$(PYTHONPATH=/home/ubuntu/decoding/ python ../src/base_model_training.py \
+        output=$(PYTHONPATH=/home/mila/h/haolun.wu/projects/plugin-decoding/ python ../src/base_model_training.py \
         --learning_rate $lr \
         --batch_size $batch_size \
         --weight_decay $wd \
