@@ -11,6 +11,6 @@ model:
 
 access_token: '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'
 
-results_dir : '../results/'
-logs_dir : '../logs/evaluation/'
-models_dir : '../models/'
+results_dir : './results/'
+logs_dir : './logs/evaluation/'
+models_dir : './models/'

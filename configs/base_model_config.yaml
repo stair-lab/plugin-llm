@@ -11,7 +11,7 @@ data:
 model:
   trained_model_name : 'w_prompt_ft_text_completion'
   base_model_name : 'gpt2-medium'
-  num_train_epochs : 5
+  num_train_epochs : 3
   early_stopping_flag : True
   early_stopping_patience : 3
   early_stopping_threshold : 0.0001
@@ -19,6 +19,6 @@ model:
   padding_side : 'left'
   print_prediction_flag : False
 
-results_dir : '../results/'
-logs_dir : '../logs/'
-models_dir : '../models/'
+results_dir : './results/'
+logs_dir : './logs/'
+models_dir : './models/'

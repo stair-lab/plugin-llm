@@ -27,7 +27,7 @@ def main():
 
     set_seed(args.random_seed)
 
-    with open("../configs/plugin_config.yaml", "r") as file:
+    with open("./configs/plugin_config.yaml", "r") as file:
         config = yaml.safe_load(file)
 
     model_name_list = [

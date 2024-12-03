@@ -33,6 +33,6 @@ plugin_model:
 
 access_token: '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'
 
-results_dir : '../results/'
-logs_dir : '../logs/'
-models_dir : '../models/'
+results_dir : './results/'
+logs_dir : './logs/'
+models_dir : './models/'
