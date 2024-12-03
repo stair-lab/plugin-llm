@@ -1,11 +1,12 @@
 #!/bin/bash
 
-#SBATCH --output=./logs/base_model_cross_validation.out
-#SBATCH --gres=gpu:a100l:1
 #SBATCH --ntasks=1
+#SBATCH --gres=gpu:a100l:1
 #SBATCH --time=10:00:00
 #SBATCH --cpus-per-task=4
-#SBATCH --mem-per-gpu=40G
+#SBATCH --mem=40G
+#SBATCH --output=./logs/base_model_cross_validation.out
+
 
 source /home/mila/h/haolun.wu/projects/plugin-decoding/statml/bin/activate
 module load python/3.10
