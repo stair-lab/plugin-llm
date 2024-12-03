@@ -1,5 +1,15 @@
 #!/bin/bash
 
+#SBATCH --output=${output_file}
+#SBATCH --gres=gpu:a100l:1
+#SBATCH --time=10:00:00
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=40G
+
+source /home/mila/h/haolun.wu/projects/plugin-decoding/statml/bin/activate
+module load python/3.10
+nvidia-smi
+
 # Hyperparameter search space
 learning_rates=(5e-5)
 weight_decays=(0.01 0.001)
@@ -7,7 +17,7 @@ weight_decays=(0.01 0.001)
 # Seed for reproducibility
 seed=42
 
-batch_size=8
+batch_size=2
 
 # File to store results
 results_file="./results/base_model_cross_validation_results.txt"

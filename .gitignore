@@ -5,3 +5,4 @@ statml/
 *.csv
 *.json
 *.yaml
+*.pyc
