@@ -1,5 +1,16 @@
 #!/bin/bash
 
+#SBATCH --ntasks=1
+#SBATCH --gres=gpu:a100l:1
+#SBATCH --time=10:00:00
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=40G
+#SBATCH --output=./logs/evaluate_models.out
+
+source /home/mila/h/haolun.wu/projects/plugin-decoding/statml/bin/activate
+module load python/3.10
+nvidia-smi
+
 evaluate_models=(
   "e2e_nlg_plugin_gpt2-xl_1layer_e2e_nlg_cleaned_80_0.0005_8_10.0_42_gpt2-xl"
   "e2e_nlg_weighted_gpt2-xl_weight_1_e2e_nlg_cleaned_80_0.0005_8_1.0_1.0_42_gpt2-xl"
@@ -71,7 +82,7 @@ for i in "${!evaluate_models[@]}"; do
   
   echo "Evaluating $evaluate_model_name on GPU $gpu"
   
-  CUDA_VISIBLE_DEVICES=$gpu PYTHONPATH=/home/ubuntu/decoding/ python ../src/evaluate_models.py \
+  CUDA_VISIBLE_DEVICES=$gpu PYTHONPATH=/home/mila/h/haolun.wu/projects/plugin-decoding/ python ./src/evaluate_models.py \
     --model_type $model_type \
     --evaluate_model_name "$evaluate_model_name" \
     --base_model_name "$base_model_name" \

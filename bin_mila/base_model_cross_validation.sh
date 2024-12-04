@@ -1,5 +1,16 @@
 #!/bin/bash
 
+#SBATCH --ntasks=1
+#SBATCH --gres=gpu:a100l:1
+#SBATCH --time=10:00:00
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=40G
+#SBATCH --output=./logs/base_model_cross_validation.out
+
+source /home/mila/h/haolun.wu/projects/plugin-decoding/statml/bin/activate
+module load python/3.10
+nvidia-smi
+
 # Hyperparameter search space
 learning_rates=(5e-6 5e-5 5e-4)
 weight_decays=(0.01 0.001)
@@ -9,8 +20,8 @@ seed=42
 
 batch_size=8
 
-# File to store results
-results_file="../results/base_model_cross_validation_results.txt"
+# File to store resultss
+results_file="./results/base_model_cross_validation_results.txt"
 best_loss=9999999
 best_params=""
 
@@ -23,7 +34,7 @@ for lr in "${learning_rates[@]}"; do
       
         # Run the training script with current hyperparameters
         echo "Running with learning_rate=$lr, weight_decay=$wd"
-        output=$(PYTHONPATH=/home/ubuntu/decoding/ python ../src/base_model_training.py \
+        output=$(PYTHONPATH=/home/mila/h/haolun.wu/projects/plugin-decoding/ python ./src/base_model_training.py \
         --learning_rate $lr \
         --batch_size $batch_size \
         --weight_decay $wd \

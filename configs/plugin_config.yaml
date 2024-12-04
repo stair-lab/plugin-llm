@@ -9,8 +9,8 @@ data:
   validation_tag : null
 
 model:
-  trained_model_name : 'e2e_nlg_plugin_gpt2-xl_1layer'
-  base_model_name : 'gpt2-xl' # meta-llama/Llama-3.1-8B, gpt2-medium, gpt2-xl
+  trained_model_name : 'e2e_nlg_plugin_gpt2-medium_1layer'
+  base_model_name : 'gpt2-medium' # meta-llama/Llama-3.1-8B, gpt2-medium, gpt2-xl
   num_train_epochs : 80
   early_stopping_flag : True
   early_stopping_patience : 3
@@ -31,7 +31,7 @@ plugin_model:
     name : null
     n_layer : 1
 
-access_token: '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'
+access_token: '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'
 
 results_dir : './results/'
 logs_dir : './logs/'

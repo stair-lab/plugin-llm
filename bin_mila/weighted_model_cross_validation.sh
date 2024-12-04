@@ -1,5 +1,16 @@
 #!/bin/bash
 
+#SBATCH --ntasks=1
+#SBATCH --gres=gpu:a100l:1
+#SBATCH --time=10:00:00
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=40G
+#SBATCH --output=./logs/base_model_cross_validation.out
+
+source /home/mila/h/haolun.wu/projects/plugin-decoding/statml/bin/activate
+module load python/3.10
+nvidia-smi
+
 # Hyperparameter search space
 learning_rates=(5e-4 5e-3)
 weight_decays=(10 1 0.1 0.01)
@@ -15,7 +26,7 @@ batch_size=8
 model_type="gpt2"
 
 # File to store results
-results_file="../results/e2e_nlg_weighted_gpt2-xl_cv_weight_1.txt"
+results_file="./results/e2e_nlg_weighted_gpt2-medium_cv_weight_1.txt"
 best_loss=9999999
 best_params=""
 
@@ -29,7 +40,7 @@ for lr in "${learning_rates[@]}"; do
       
             # Run the training script with current hyperparameters
             echo "Running with learning_rate=$lr, weight_decay=$wd"
-            output=$(PYTHONPATH=/home/ubuntu/decoding/ python ../src/weighted_decoding.py \
+            output=$(PYTHONPATH=/home/mila/h/haolun.wu/projects/plugin-decoding/ python ./src/weighted_decoding.py \
             --model_type $model_type \
             --learning_rate $lr \
             --batch_size $batch_size \
