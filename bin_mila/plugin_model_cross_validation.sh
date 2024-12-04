@@ -5,7 +5,7 @@
 #SBATCH --time=10:00:00
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=40G
-#SBATCH --output=./logs/base_model_cross_validation.out
+#SBATCH --output=./logs/e2e_nlg_plugin_cv_1layer_gpt2-medium.out
 
 source /home/mila/h/haolun.wu/projects/plugin-decoding/statml/bin/activate
 module load python/3.10
@@ -24,7 +24,7 @@ batch_size=8
 model_type="gpt2"
 
 # File to store results
-results_file="./results/e2e_nlg_plugin_cv_1layer_gpt2-xl.txt"
+results_file="./results/e2e_nlg_plugin_cv_1layer_gpt2-medium.txt"
 best_loss=9999999
 best_params=""
 

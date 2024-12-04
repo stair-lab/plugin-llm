@@ -5,7 +5,7 @@
 #SBATCH --time=10:00:00
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=40G
-#SBATCH --output=./logs/base_model_cross_validation.out
+#SBATCH --output=./logs/e2e_nlg_weighted_gpt2-medium_cv_weight_1.out
 
 source /home/mila/h/haolun.wu/projects/plugin-decoding/statml/bin/activate
 module load python/3.10
