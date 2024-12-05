@@ -105,4 +105,4 @@ def get_base_probs(md, input_ids, attention_mask, position_ids):
         logits_base = outputs_base.logits
         # Convert logits to probabilities (apply softmax)
         probabilities_base = torch.nn.functional.softmax(logits_base, dim=-1)
-    return probabilities_base
+    return probabilities_base # [batch_size, seq_len, vocab_size]
