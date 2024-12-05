@@ -1,10 +1,10 @@
 #!/bin/bash
 
 #SBATCH --ntasks=1
-#SBATCH --gres=gpu:a100l:1
+#SBATCH --gres=gpu:a100l:4
 #SBATCH --time=10:00:00
-#SBATCH --cpus-per-task=4
-#SBATCH --mem=40G
+#SBATCH --cpus-per-task=16 # 4 cores per GPU
+#SBATCH --mem-per-gpu=40G   # Memory per GPU
 #SBATCH --output=./logs/e2e_nlg_weighted_gpt2-medium_cv_weight_1.out
 
 source /home/mila/h/haolun.wu/projects/plugin-decoding/statml/bin/activate

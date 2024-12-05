@@ -68,7 +68,7 @@ def main():
     except OSError:
         if(args.model_type == 'llama'): # only done for LLama
             base_model = AutoModelForCausalLM.from_pretrained(config['model']['base_model_name'], token = config['access_token'], torch_dtype=torch.float16)
-            base_model.to('cuda:7')
+            base_model.to('cuda:3')
         else:
             base_model = AutoModelForCausalLM.from_pretrained(config['model']['base_model_name'], token = config['access_token'])
     # if(config['model']['base_model_name'] == 'gpt2-medium'):
