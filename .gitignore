@@ -6,3 +6,6 @@ statml/
 *.json
 *.yaml
 *.pyc
+logs/
+results/
+models/
