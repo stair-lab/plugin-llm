@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH --ntasks=1
-#SBATCH --partition=unkillable 
+#SBATCH --partition=long 
 #SBATCH --gres=gpu:a100l:2
 #SBATCH --time=10:00:00
 #SBATCH --cpus-per-task=8 # 4 cores per GPU
