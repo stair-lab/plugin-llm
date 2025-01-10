@@ -7,7 +7,7 @@
 #SBATCH --cpus-per-task=8 # 4 cores per GPU
 #SBATCH --mem-per-gpu=40G   # Memory per GPU
 
-source /home/mila/h/haolun.wu/projects/plugin-decoding/statml/bin/activate
+source /home/haolun/projects/ctb-lcharlin/haolun/plugin-decoding/statml/bin/activate
 module load python/3.10
 nvidia-smi
 
@@ -43,7 +43,7 @@ for lr in "${learning_rates[@]}"; do
       
             # Run the training script with current hyperparameters
             echo "Running with learning_rate=$lr, weight_decay=$wd, new_model_weight=$nmw"
-            output=$(PYTHONPATH=/home/mila/h/haolun.wu/projects/plugin-decoding/ python ./src/weighted_decoding.py \
+            output=$(PYTHONPATH=/home/haolun/projects/ctb-lcharlin/haolun/plugin-decoding/ python ./src/weighted_decoding.py \
                 --model_type $model_type \
                 --learning_rate $lr \
                 --batch_size $batch_size \
