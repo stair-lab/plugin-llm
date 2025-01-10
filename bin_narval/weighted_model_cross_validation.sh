@@ -1,12 +1,24 @@
 #!/bin/bash
 
+#SBATCH --account=ctb-lcharlin
 #SBATCH --ntasks=1
-#SBATCH --partition=long 
-#SBATCH --gres=gpu:a100l:2
-#SBATCH --time=10:00:00
-#SBATCH --cpus-per-task=8 # 4 cores per GPU
+#SBATCH --gres=gpu:a100:1
+#SBATCH --time=1:00:00
+#SBATCH --cpus-per-task=4 # 4 cores per GPU
 #SBATCH --mem-per-gpu=40G   # Memory per GPU
 
+# Define base directory
+RESULTS_DIR="$/home/haolun/projects/ctb-lcharlin/haolun/plugin-decoding/results"
+LOGS_DIR="$/home/haolun/projects/ctb-lcharlin/haolun/plugin-decoding/logs"
+
+# Create necessary directories
+mkdir -p $RESULTS_DIR
+mkdir -p $LOGS_DIR
+
+# Update results file path
+results_file="$/home/haolun/projects/ctb-lcharlin/haolun/plugin-decoding/e2e_nlg_weighted_gpt2-medium.txt"
+
+# Rest of your environment setup
 source /home/haolun/projects/ctb-lcharlin/haolun/plugin-decoding/statml/bin/activate
 module load python/3.10
 nvidia-smi
@@ -15,8 +27,8 @@ nvidia-smi
 # learning_rates=(5e-4 5e-3)
 # weight_decays=(10 1 0.1 0.01)
 # new_model_weights=(1)
-learning_rates=(5e-5 5e-4)
-weight_decays=(10 1 0.1)
+learning_rates=(5e-4)
+weight_decays=(1)
 new_model_weights=(0.75 0.50 0.25)
 
 # Seed for reproducibility
@@ -27,7 +39,6 @@ model_type="gpt2"
 
 # File to store results
 # results_file="./results/e2e_nlg_weighted_gpt2-medium_cv_weight_1.txt"
-results_file="./results/e2e_nlg_weighted_gpt2-medium.txt"
 best_loss=9999999
 best_params=""
 
@@ -43,7 +54,7 @@ for lr in "${learning_rates[@]}"; do
       
             # Run the training script with current hyperparameters
             echo "Running with learning_rate=$lr, weight_decay=$wd, new_model_weight=$nmw"
-            output=$(PYTHONPATH=/home/haolun/projects/ctb-lcharlin/haolun/plugin-decoding/ python ./src/weighted_decoding.py \
+            output=$(PYTHONPATH=/home/haolun/projects/ctb-lcharlin/haolun/plugin-decoding/ python /home/haolun/projects/ctb-lcharlin/haolun/plugin-decoding/src/weighted_decoding.py \
                 --model_type $model_type \
                 --learning_rate $lr \
                 --batch_size $batch_size \
@@ -51,15 +62,23 @@ for lr in "${learning_rates[@]}"; do
                 --new_model_weight $nmw \
                 --random_seed $seed 2>&1)
 
-            validation_loss=$(echo "$output" | grep "eval_loss" | tail -n 1 | awk -F "'eval_loss': " '{print $2}' | awk -F "," '{print $1}')
-        
-            # Log the results
+            echo "Raw output:"
+            echo "$output"
+            
+            validation_loss=$(echo "$output" | grep "eval_loss" | tail -n 1 | awk -F "'eval_loss': " '{print $2}' | awk -F "[, }]" '{print $1}')
+            
+            if [[ -z "$validation_loss" ]]; then
+                echo "Validation loss not found. Skipping this run." >> $results_file
+                continue
+            fi
+            
             echo "learning_rate=$lr, weight_decay=$wd, new_model_weight=$nmw, validation_loss=$validation_loss" >> $results_file
             
-            # Check if this is the best validation loss
             if (( $(echo "$validation_loss < $best_loss" | bc -l) )); then
-            best_loss=$validation_loss
-            best_params="learning_rate=$lr, weight_decay=$wd, new_model_weight=$nmw"
+                best_loss=$validation_loss
+                best_params="learning_rate=$lr, weight_decay=$wd, new_model_weight=$nmw"
+            else
+                echo "Comparison failed: validation_loss=$validation_loss, best_loss=$best_loss" >> $results_file
             fi
 
         done

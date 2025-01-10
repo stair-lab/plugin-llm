@@ -9,7 +9,7 @@ set -e
 # Assuming the environment is already activated, start directly with package installation
 echo "Installing Python packages..."
 
-pip install torch==2.4
+pip install torch==2.4.1+computecanada
 pip install pyyaml transformers pandas datasets scikit-learn tensorboardX
 pip install 'accelerate>=0.26.0'
 
@@ -18,7 +18,7 @@ pip install nlg-metricverse
 
 pip install --upgrade datasets
 
-pip install numpy==1.26.0 pycocoevalcap
+pip install numpy pycocoevalcap
 
 pip install nltk rouge_score
 
