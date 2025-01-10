@@ -110,7 +110,7 @@ class ProcessedDataset():
         inputs = examples["meaning_representation"]
         targets = examples["human_reference"]
 
-        # Tokenize the targets (human references)
+        # Tokenize the inputs (meaning representations)
         tokenized_inputs = tokenizer(
             inputs, add_special_tokens=True, max_length = input_size, truncation=True, 
         )

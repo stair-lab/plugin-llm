@@ -12,21 +12,12 @@ class CustomLlamaModelBatchSeparate(LlamaForCausalLM):
     
     def forward(self, input_ids, attention_mask=None, labels=None, base_model=None):
         # Get the logits from the base GPT-2 model
-        position_ids = get_position_ids_left_padded(input_ids=input_ids, attention_mask=attention_mask)
-        # print('got position ids')
-        # print('$$$', input_ids.device)
-        # print(attention_mask)
-        # print(position_ids)
-        # print(labels)
+        position_ids = get_position_ids_left_padded(input_ids=input_ids, 
+                                                    attention_mask=attention_mask)
         outputs = super().forward(input_ids, attention_mask=attention_mask, position_ids=position_ids)
-        # outputs = super().forward(input_ids, attention_mask=attention_mask)
         logits = outputs.logits
-        # print('logits', logits.size())
-        # Convert logits to probabilities (apply softmax)
         probabilities = nn.functional.softmax(logits, dim=-1)
-        # print('probabilities', probabilities.size())
         
-        # print('no error here')
         probabilities_base = get_base_probs(base_model, input_ids, attention_mask, position_ids)
         
         probabilities_base = probabilities_base.to(probabilities.device)
@@ -46,14 +37,9 @@ class CustomLlamaModelBatchSeparate(LlamaForCausalLM):
         
         # Use modified logits for loss calculation or generation
         if labels is not None:
-            # print('reached here')
-            # print('labels size', labels.size())
-            # print('labels', labels)
             # Shift the logits and labels for computing the loss
             shift_logits = modified_logits[..., :-1, :].contiguous()
             shift_labels = labels[..., 1:].contiguous()
-            # print('shift_logits', shift_logits.size())
-            # print('shift_labels', shift_labels.size())            
             loss_fct = nn.CrossEntropyLoss()
             loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
             return loss, modified_logits

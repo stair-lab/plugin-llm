@@ -6,36 +6,31 @@ from utils.commons import get_position_ids_text_completion_left_padded, get_posi
 
 
 class CustomCalibGPT2ModelBatch(GPT2LMHeadModel):
-    def __init__(self, config, ft_model, alpha=0.1):  # added alpha parameter
+    def __init__(self, config, ft_model, alpha=0.1):
         super().__init__(config)
         self.config = config
         self.ft_model = ft_model
-        self.logits_projector = nn.Linear(self.ft_model.config.vocab_size, config.n_embd)
-        self.to_temperature = nn.Linear(config.n_embd, 1)
-        self.alpha = alpha  # for the new loss function
+        # Direct projection from vocab_size to 1 temperature value. bias=True by default
+        self.to_temperature = nn.Linear(self.ft_model.config.vocab_size, 1)
+        self.alpha = alpha
 
     def forward(self, input_ids, attention_mask=None, labels=None, use_new_loss=False):
         # Get base model logits
         with torch.no_grad():
             outputs_base = self.ft_model.forward(input_ids, attention_mask=attention_mask)
-            logits_base = outputs_base.logits  # [batch, seq_len, vocab]
+            logits_base = outputs_base.logits  # Shape: [batch, seq_len, vocab_size]
         
-        # Project logits to hidden size
-        hidden_states = self.logits_projector(logits_base)  # [batch, seq_len, n_embd]
+        # Compute temperature
+        temperature = self.to_temperature(logits_base)  # Shape: [batch, seq_len, 1]
         
-        # Pass through transformer layer
-        transformer_outputs = self.transformer(inputs_embeds=hidden_states, 
-                                            attention_mask=attention_mask)
+        # Apply temperature scaling
+        calibrated_logits = logits_base * torch.exp(temperature)  # Shape: [batch, seq_len, vocab_size]
         
-        # Get temperature
-        temperature = self.to_temperature(transformer_outputs.last_hidden_state)  # [batch, seq_len, 1]
-        temperature = temperature.squeeze(-1)  # [batch, seq_len]
-        
-        # Apply temperature scaling by multiplying with exp(temperature) as per paper
-        calibrated_logits = logits_base * torch.exp(temperature).unsqueeze(-1)
+        normalized_probabilities = calibrated_logits / calibrated_logits.sum(dim=-1, keepdim=True)
+        modified_logits = torch.log(normalized_probabilities + 1e-8)
         
         if labels is not None:
-            shift_logits = calibrated_logits[..., :-1, :].contiguous()
+            shift_logits = modified_logits[..., :-1, :].contiguous()
             shift_labels = labels[..., 1:].contiguous()
             
             if use_new_loss:
@@ -73,6 +68,6 @@ class CustomCalibGPT2ModelBatch(GPT2LMHeadModel):
                 loss_fct = nn.CrossEntropyLoss()
                 loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
             
-            return loss, calibrated_logits
+            return loss, modified_logits
         
-        return calibrated_logits
+        return modified_logits
