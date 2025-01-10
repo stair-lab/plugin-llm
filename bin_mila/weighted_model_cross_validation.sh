@@ -1,9 +1,10 @@
 #!/bin/bash
 
 #SBATCH --ntasks=1
-#SBATCH --gres=gpu:a100l:4
+#SBATCH --partition=unkillable 
+#SBATCH --gres=gpu:a100l:2
 #SBATCH --time=10:00:00
-#SBATCH --cpus-per-task=16 # 4 cores per GPU
+#SBATCH --cpus-per-task=8 # 4 cores per GPU
 #SBATCH --mem-per-gpu=40G   # Memory per GPU
 
 source /home/mila/h/haolun.wu/projects/plugin-decoding/statml/bin/activate
