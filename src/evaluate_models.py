@@ -320,7 +320,7 @@ def main():
     if(args.new_model_weight):
         args.new_model_weight = float(args.new_model_weight)
 
-    with open("../configs/evaluate_config.yaml", "r") as file:
+    with open("./configs/evaluate_config.yaml", "r") as file:
         config = yaml.safe_load(file)
 
     os.makedirs(os.path.join(config['logs_dir']), exist_ok = True)

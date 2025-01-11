@@ -1,7 +1,10 @@
 #!/bin/bash
 
-source /home/haolun/projects/ctb-lcharlin/haolun/plugin-decoding/statml/bin/activate
-module load python/3.10
+module load StdEnv/2023  cudacore/.12.2.2
+module load arrow/15.0.1
+module load python/3.11
+source /home/haolun/scratch/plugin-decoding/statml/bin/activate
+module load python/3.11
 
 # Ensure the script exits immediately if a command fails
 set -e
