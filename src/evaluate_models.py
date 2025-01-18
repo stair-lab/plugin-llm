@@ -17,7 +17,7 @@ from torch.utils.data import Dataset, DataLoader
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from tqdm import tqdm
 from utils.commons import get_position_ids_left_padded
-from utils.data_preprocess import process_e2e_nlg_cleaned, process_common_gen, process_web_nlg
+from utils.data_preprocess import process_e2e_nlg_cleaned, process_common_gen, process_web_nlg, process_nike_products
 
 
 class DictDataset(Dataset):
@@ -80,7 +80,6 @@ class DictDataset(Dataset):
             'attention_mask': tokenized['attention_mask'].squeeze(0),
             'meaning_representation' :   example['meaning_representation']# Remove batch dimension
         }
-
 
 def custom_generate_original(model, input_ids, attention_mask, max_length, repetition_penalty, 
                              tokenizer, input_size, top_k=50, temperature=1.0, top_p = 1, bb_model = None, new_model_weight = None):
@@ -172,7 +171,7 @@ def custom_generate_original(model, input_ids, attention_mask, max_length, repet
     return generated_ids[:, input_size:]
 
 def get_eval_dat_per_model(tokenizer, eval_model, dat_loader, device, input_size, meaning_to_references,
-                           max_length=128, repetition_penalty=1.1, bb_model = None, new_model_weight=None):
+                           max_length=128, repetition_penalty=1.1, bb_model = None, new_model_weight=None, logger=None):
     generated_ids_list = []
     mrs = []
     references = []
@@ -202,45 +201,64 @@ def get_eval_dat_per_model(tokenizer, eval_model, dat_loader, device, input_size
         #     break
     generated_ids_tensor = torch.vstack(generated_ids_list)
     predicted_text_list = tokenizer.batch_decode(generated_ids_tensor, skip_special_tokens=True)
+    
+    # Post-process the predicted text
+    processed_text_list = []
+    for text in predicted_text_list:
+        first_newline_pos = text.find('\n') # Find the first newline position
+        
+        if first_newline_pos == -1:  # No newline found
+            processed_text_list.append(text)
+            continue
+            
+        # Check if newline is in first 20 tokens (approximating by characters)
+        if first_newline_pos < 20:
+            text = text.replace('\n', '', 1)
+            next_newline = text.find('\n')
+            if next_newline != -1:
+                text = text[:next_newline]
+        else:
+            text = text[:first_newline_pos]
+            
+        processed_text_list.append(text)
+    
     for mr in mrs:
         references.append(meaning_to_references[mr])
     
-    return {'predictions' : predicted_text_list, 'meaning_representations' : mrs, 'references' : references}
+    return {'predictions' : processed_text_list, 'meaning_representations' : mrs, 'references' : references}
 
-def get_ic_prompt(len_context, dat_val, base_model_name, dataset_name):
+def get_ic_prompt(len_context, dat_val, base_model_name, dataset_name, logger):
     context = ""
     if(dataset_name == 'e2e_nlg_cleaned'):
         if(len_context > 0):
             np.random.seed(42)
             ic_ids = np.random.choice(len(dat_val), len_context)
+            context += "Below are examples of (Attributes, Sentence) pairs for some restaurants.\n\n<examples>\n\n"
             if(base_model_name == 'gpt2-medium'):
-                context += "<examples>\n"
                 for j, i in enumerate(ic_ids):
                     context += (
                         dat_val[int(i)]['meaning_representation'] + 
                         dat_val[int(i)]['human_reference'] + 
                         '\n'
                     )
-                context += "</examples>\n"
             elif(base_model_name == 'gpt2-xl'):
                 for j, i in enumerate(ic_ids):
                     context += (
                         dat_val[int(i)]['meaning_representation'] + 
-                        '\n' + 
+                        '\n' +
                         dat_val[int(i)]['human_reference'] + 
                         '\n\n'
                     )
             elif('Llama-3.1-8B' in base_model_name):
-                context += "Consider the following examples of restaurant descriptions from attributes.\n\n<examples>\n\n"
                 for j, i in enumerate(ic_ids):
-                    static_str_from_prompt = 'Do not provide explanation. Just convert the following attributes of a restaurant in a coherent sentence.\n\n'
-                    context += f'Example {j+1} --\n'
+                    static_str_from_prompt = 'Please convert the following restaurant attributes into a coherent sentence. Do not provide explanation.\n\n'
+                    context += f'Attributes:'
                     context += (
                         dat_val[int(i)]['meaning_representation'][len(static_str_from_prompt):] + 
                         dat_val[int(i)]['human_reference'] + 
                         '\n\n'
                     )
-                context += "</examples>\n"
+            context += "</examples>\n"
     elif(dataset_name == 'web_nlg'):
         if(len_context > 0):
             np.random.seed(42)
@@ -303,6 +321,39 @@ def get_ic_prompt(len_context, dat_val, base_model_name, dataset_name):
                         '\n\n'
                     )
                 context += 'Consider the above coherent sentences from concepts. Just generate one sentence. '
+    elif(dataset_name == 'nike_products'):
+        if(len_context > 0):
+            np.random.seed(42)
+            ic_ids = np.random.choice(len(dat_val), len_context)
+            context += "Below are examples of (Attributes, Advertising description) pairs for some sport products.\n\n<examples>\n\n"
+            if(base_model_name == 'gpt2-medium'):
+                for j, i in enumerate(ic_ids):
+                    context += (
+                        dat_val[int(i)]['meaning_representation'] + 
+                        dat_val[int(i)]['human_reference'] + 
+                        '\n'
+                    )
+            elif(base_model_name == 'gpt2-xl'):
+                for j, i in enumerate(ic_ids):
+                    context += (
+                        dat_val[int(i)]['meaning_representation'] + 
+                        '\n' +
+                        dat_val[int(i)]['human_reference'] + 
+                        '\n\n'
+                    )
+            elif('Llama-3.1-8B' in base_model_name):
+                for j, i in enumerate(ic_ids):
+                    static_str_from_prompt = 'Please write an advertising description of this sport product. Do not provide explanation.\n\n'
+                    context += f'Attributes:'
+                    context += (
+                        dat_val[int(i)]['meaning_representation'][len(static_str_from_prompt):] + 
+                        dat_val[int(i)]['human_reference'] + 
+                        '\n\n'
+                    )
+            context += "</examples>\n"
+    # logger.info("*************************")
+    # logger.info("context: " + context)
+    # logger.info("*************************")
     return context
 
 def main():
@@ -322,6 +373,12 @@ def main():
 
     with open("./configs/evaluate_config.yaml", "r") as file:
         config = yaml.safe_load(file)
+        if 'gpt2-medium' in args.evaluate_model_name:
+            config['model']['base_model_for_prompt'] = 'gpt2-medium'
+        elif 'gpt2-xl' in args.evaluate_model_name:
+            config['model']['base_model_for_prompt'] = 'gpt2-xl'
+        elif 'Llama-3.1-8B' in args.evaluate_model_name:
+            config['model']['base_model_for_prompt'] = 'meta-llama/Llama-3.1-8B'
 
     os.makedirs(os.path.join(config['logs_dir']), exist_ok = True)
 
@@ -393,24 +450,29 @@ def main():
 
     logger.info('Tokenizer, base model, and model loaded')
 
-    # dataset = load_dataset(config['data']['dataset_name'], split=config['data']['evaluate_tag'])
-    if(config['data']['dataset_name'] == 'web_nlg'):
-        dataset = load_dataset(config['data']['dataset_name'], 'webnlg_challenge_2017', trust_remote_code=True)
-    else:
-        dataset = load_dataset(config['data']['dataset_name'], trust_remote_code=True)
-
-    if(config['data']['dataset_name'] == 'e2e_nlg_cleaned'):
-        dataset = process_e2e_nlg_cleaned(dataset, config['model']['base_model_for_prompt'])
-        logger.info(f"processed e2e data with base model prompt {config['model']['base_model_for_prompt']}")
+    # Load and process datasets
+    if config['data']['dataset_name'] == 'nike_products':
+        # Nike dataset is processed directly from local CSV
+        dataset = process_nike_products("NikeProductDescriptions.csv", config['model']['base_model_for_prompt'])
+        logger.info(f"processed nike data with base model prompt {config['model']['base_model_for_prompt']}")
     elif(config['data']['dataset_name'] == 'web_nlg'):
+        # Load and then process web_nlg
+        dataset = load_dataset(config['data']['dataset_name'], 'webnlg_challenge_2017', trust_remote_code=True)
         dataset = process_web_nlg(dataset, config['model']['base_model_for_prompt'])
         logger.info(f"processed web_nlg data with base model prompt {config['model']['base_model_for_prompt']}")
+    elif(config['data']['dataset_name'] == 'e2e_nlg_cleaned'):
+        # Load and then process e2e
+        dataset = load_dataset(config['data']['dataset_name'], trust_remote_code=True)
+        dataset = process_e2e_nlg_cleaned(dataset, config['model']['base_model_for_prompt'])
+        logger.info(f"processed e2e data with base model prompt {config['model']['base_model_for_prompt']}")
     elif(config['data']['dataset_name'] == 'common_gen'):
+        # Load and then process common_gen
+        dataset = load_dataset(config['data']['dataset_name'], trust_remote_code=True)
         dataset = process_common_gen(dataset, config['model']['base_model_for_prompt'])
         logger.info(f"processed common_gen data with base model prompt {config['model']['base_model_for_prompt']}")
     
     # getting prompt for in-context generation
-    context = get_ic_prompt(args.len_context, dataset['validation'], config['model']['base_model_for_prompt'], config['data']['dataset_name'])
+    context = get_ic_prompt(args.len_context, dataset['validation'], config['model']['base_model_for_prompt'], config['data']['dataset_name'], logger)
 
     # filtering dataset for evaluation
     dataset = dataset[config['data']['evaluate_tag']]
@@ -448,7 +510,8 @@ def main():
     if(args.len_context > 0):
         input_size += args.len_context*(input_size + config['data']['target_size'])
 
-    unique_dataset = DictDataset([{'meaning_representation': mr} for mr in meaning_to_references.keys()], 
+    # unique_dataset = DictDataset([{'meaning_representation': mr} for mr in meaning_to_references.keys()], tokenizer, input_size)
+    unique_dataset = DictDataset([{'meaning_representation': mr} for mr in list(meaning_to_references.keys())[:50]], ### Only for testing prompt
                                  tokenizer, input_size)
 
     # Load BLEU and ROUGE metrics from evaluate library
@@ -474,13 +537,22 @@ def main():
 
     output = get_eval_dat_per_model(tokenizer, model, eval_dataloader, device, 
                                     input_size, meaning_to_references,
-                                    max_length=config['data']['target_size'], bb_model = base_model, new_model_weight=args.new_model_weight)
+                                    max_length=config['data']['target_size'], bb_model = base_model, new_model_weight=args.new_model_weight, logger=logger)
     
     for sel_id in range(len(output['meaning_representations'])):
         logger.info('Select id:  ' + str(sel_id))
         logger.info('Input:      ' + output['meaning_representations'][sel_id])
+        logger.info("--------------------------------")
         logger.info('Prediction: ' + output['predictions'][sel_id])
+        logger.info("--------------------------------")
         logger.info('References: ' + ':;:;'.join(output['references'][sel_id]))
+        logger.info("--------------------------------")
+        # # Add individual BLEU score
+        # individual_bleu = bleu_metric.compute(
+        #     predictions=[output['predictions'][sel_id]], 
+        #     references=[output['references'][sel_id]]
+        # )
+        # logger.info(f'Individual BLEU: {np.round(individual_bleu["bleu"], 4)}\n')
 
     # Compute BLEU score
     bleu_score = bleu_metric.compute(predictions=output['predictions'], references=output['references'])

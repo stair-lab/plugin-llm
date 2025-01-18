@@ -7,10 +7,12 @@ data:
 
 model:
   padding_side : 'left'
-  base_model_for_prompt : 'gpt2-medium' # 'gpt2-medium' # 'gpt2-xl' # 'meta-llama/Llama-3.1-8B'
+  # Updated to automatically determine the base model for prompt
+  # base_model_for_prompt : 'gpt2-medium' # 'gpt2-medium' # 'gpt2-xl' # 'meta-llama/Llama-3.1-8B'
+
 
 access_token: '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'
 
 results_dir : './results/'
-logs_dir : './logs/evaluation/'
+logs_dir : './evaluation/'
 models_dir : './models/'

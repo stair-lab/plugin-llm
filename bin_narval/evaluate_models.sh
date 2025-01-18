@@ -27,7 +27,7 @@ export PYTHONPATH="/lustre07/scratch/haolun/plugin-decoding:$PYTHONPATH"
 nvidia-smi
 
 evaluate_models=(
-  e2e_nlg_weighted_gpt2-medium_e2e_nlg_cleaned_80_0.0005_8_1.0_0.75_43_gpt2-medium
+  "e2e_nlg_weighted_gpt2-medium_e2e_nlg_cleaned_80_0.0005_8_1.0_0.75_43_gpt2-medium"
   # "e2e_nlg_plugin_gpt2-xl_1layer_e2e_nlg_cleaned_80_0.0005_8_10.0_42_gpt2-xl"
   # "e2e_nlg_weighted_gpt2-xl_weight_1_e2e_nlg_cleaned_80_0.0005_8_1.0_1.0_42_gpt2-xl"
   # "e2e_nlg_weighted_gpt2-xl_weight_all_e2e_nlg_cleaned_80_0.0005_8_1.0_0.75_42_gpt2-xl"

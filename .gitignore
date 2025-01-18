@@ -2,10 +2,13 @@ statml/
 *.out
 *.txt
 *.log
-*.csv
+# *.csv
 *.json
 *.yaml
 *.pyc
 logs/
 results/
 models/
+evaluation/
+bin_mila/
+bin_narval/

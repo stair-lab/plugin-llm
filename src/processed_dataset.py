@@ -4,7 +4,7 @@ import torch
 from datasets import load_dataset, Dataset, DatasetDict
 from sklearn.model_selection import train_test_split
 
-from utils.data_preprocess import process_e2e_nlg_cleaned, process_web_nlg, process_common_gen
+from utils.data_preprocess import process_e2e_nlg_cleaned, process_web_nlg, process_common_gen, process_nike_products
 
 class ProcessedDataset():
     def __init__(self, name, base_model_name):
@@ -13,17 +13,18 @@ class ProcessedDataset():
         print("***")
         print("Start loading dataset")
         print("***")
-        if(name == 'web_nlg'):
-            self.data = load_dataset(name, 'webnlg_challenge_2017', trust_remote_code=True)
-        else:
-            self.data = load_dataset(name, trust_remote_code=True)
         
         if(name == 'e2e_nlg_cleaned'):
+            self.data = load_dataset(name, 'webnlg_challenge_2017', trust_remote_code=True)
             self.data = process_e2e_nlg_cleaned(self.data, self.base_model_name)
         elif(name == 'web_nlg'):
+            self.data = load_dataset(name, trust_remote_code=True)
             self.data = process_web_nlg(self.data, self.base_model_name)
         elif(name == 'common_gen'):
+            self.data = load_dataset(name, trust_remote_code=True)
             self.data = process_common_gen(self.data, self.base_model_name)
+        elif(name == 'nike_products'):
+            self.data = process_nike_products("NikeProductDescriptions.csv", self.base_model_name)
         print("***")
         print("Finish loading dataset")
         print("***")

@@ -1,5 +1,5 @@
 data:
-  dataset_name : 'e2e_nlg_cleaned'
+  dataset_name : 'nike_products'
   dataset_version : null
   input_size : 128
   target_size : 128
@@ -9,9 +9,8 @@ data:
   validation_tag : null
 
 model:
-  # trained_model_name : 'e2e_nlg_weighted_gpt2-medium_weight_1'
-  trained_model_name : 'e2e_nlg_weighted_gpt2-medium'
-  base_model_name : 'gpt2-medium' # meta-llama/Llama-3.1-8B, gpt2-medium, gpt2-xl
+  # trained_model_name : 'nike_products_weighted_llama'
+  # base_model_name : 'meta-llama/Llama-3.1-8B' # meta-llama/Llama-3.1-8B, gpt2-medium, gpt2-xl
   num_train_epochs : 80
   early_stopping_flag : True
   early_stopping_patience : 3
