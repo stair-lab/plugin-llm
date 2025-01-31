@@ -17,4 +17,5 @@ utils/adidas_style.py
 utils/analyze_plugin_probs.py
 adidas_style_words.txt
 adidas.csv
+
 *.ipynb
