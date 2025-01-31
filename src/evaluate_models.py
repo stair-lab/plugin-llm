@@ -5,6 +5,10 @@ import numpy as np
 import os
 import torch
 import yaml
+import matplotlib.pyplot as plt
+from scipy import stats
+from scipy.stats import gaussian_kde
+import pandas as pd
 
 import IPython
 
@@ -17,7 +21,79 @@ from torch.utils.data import Dataset, DataLoader
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from tqdm import tqdm
 from utils.commons import get_position_ids_left_padded
-from utils.data_preprocess import process_e2e_nlg_cleaned, process_common_gen, process_web_nlg, process_nike_products
+from utils.data_preprocess import process_e2e_nlg_cleaned, process_common_gen, process_web_nlg, process_nike, process_adidas
+
+def load_adidas_style_words(file_path):
+    style_words = []
+    with open(file_path, 'r') as f:
+        lines = f.readlines()
+        for line in lines[:50]: 
+            word, count = line.split(':')
+            word = word.strip()
+            count = int(count.strip())
+            style_words.append((word, count))
+    return style_words
+
+def get_token_ids_for_words(words, tokenizer, logger=None):
+    token_ids = {}
+    for word in words:
+        # Try both with and without space prefix
+        tokens_no_space = tokenizer(word, add_special_tokens=False)['input_ids']
+        tokens_with_space = tokenizer(" " + word, add_special_tokens=False)['input_ids']
+        
+        # Use the space-prefixed version if it exists as a single token
+        if len(tokens_with_space) == 1:
+            token_ids[word] = tokens_with_space[0]
+        else:
+            token_ids[word] = tokens_no_space[0]
+            
+        # if logger:
+        #     logger.info(f"Word '{word}' -> ID {token_ids[word]} -> '{tokenizer.decode([token_ids[word]])}'")
+    return token_ids
+
+
+def plot_style_word_probabilities(plugin_probs, base_probs, style_token_ids, style_words, step, tokenizer, next_token_id, selected_id, save_dir='./probability_plots'):
+    plt.figure(figsize=(20, 6))
+    
+    # Get probabilities and words - using full vocab normalized probabilities directly
+    word_probs = []
+    for word, _ in style_words:
+        space_token = tokenizer(" " + word, add_special_tokens=False)['input_ids']
+        if len(space_token) == 1:
+            tid = space_token[0]
+        else:
+            tid = tokenizer(word, add_special_tokens=False)['input_ids'][0]
+            
+        word_probs.append({
+            'word': word,
+            'base_prob': base_probs[0, tid].item(),     # Already normalized over full vocab
+            'combined_prob': plugin_probs[0, tid].item(),  # Already normalized over full vocab
+            'count': next(count for w, count in style_words if w == word)
+        })
+    
+    # Sort by count in descending order
+    word_probs.sort(key=lambda x: x['count'], reverse=True)
+    
+    # Create visualization using full vocab normalized probabilities
+    x = np.arange(len(word_probs))
+    width = 0.35
+    
+    plt.bar(x - width/2, [wp['base_prob'] for wp in word_probs], width, 
+           label='Base Model', color='lightblue', alpha=0.6)
+    plt.bar(x + width/2, [wp['combined_prob'] for wp in word_probs], width, 
+           label='Combined', color='lightcoral', alpha=0.6)
+    
+    plt.xlabel('Style Words (sorted by frequency)')
+    plt.ylabel('Probability (normalized over full vocabulary)')
+    next_token = tokenizer.decode([next_token_id])
+    plt.title(f'Sample {selected_id} - Token Probabilities at Generation Step {step}\nGenerated Token: "{next_token}"')
+    
+    plt.xticks(x, [f"{wp['word']}" for wp in word_probs], rotation=90, ha='right')
+    plt.legend()
+    plt.tight_layout()
+    
+    plt.savefig(f'{save_dir}/sample_{selected_id}_step_{step:03d}_probs.png', dpi=300)
+    plt.close()
 
 
 class DictDataset(Dataset):
@@ -82,7 +158,11 @@ class DictDataset(Dataset):
         }
 
 def custom_generate_original(model, input_ids, attention_mask, max_length, repetition_penalty, 
-                             tokenizer, input_size, top_k=50, temperature=1.0, top_p = 1, bb_model = None, new_model_weight = None):
+                           tokenizer, input_size, top_k=50, temperature=1.0, top_p=1, 
+                           bb_model=None, new_model_weight=None, style_token_ids=None, style_words=None, selected_id=None):
+    
+    # Initialize list to collect all steps' probabilities
+    all_steps_data = []
     
     generated_ids = input_ids.clone()  # Start with the input prompt
     finished_sequences = torch.zeros(input_ids.size(0), dtype=torch.bool).to(input_ids.device)
@@ -131,6 +211,40 @@ def custom_generate_original(model, input_ids, attention_mask, max_length, repet
             if(new_model_weight):
                 probs_base = probs_base*(1.0-new_model_weight)
 
+            # Add visualization and data collection here, before probability combination
+            if style_token_ids and style_words:
+                # Calculate combined probabilities
+                if new_model_weight:
+                    combined_probs = probs + probs_base
+                else:
+                    combined_probs = probs * probs_base
+                    combined_probs = combined_probs / combined_probs.sum()
+                
+                # Get actual selected token
+                next_token_id = torch.argmax(combined_probs, dim=-1).item()
+                
+                # Collect data for both visualization and CSV
+                word_probs = []
+                for word, _ in style_words:
+                    space_token = tokenizer(" " + word, add_special_tokens=False)['input_ids']
+                    if len(space_token) == 1:
+                        tid = space_token[0]
+                    else:
+                        tid = tokenizer(word, add_special_tokens=False)['input_ids'][0]
+                        
+                    word_probs.append({
+                        'word': word,
+                        'base_prob': probs_base[0, tid].item(),
+                        'combined_prob': combined_probs[0, tid].item(),
+                        'step': step,
+                        'next_token': tokenizer.decode([next_token_id])
+                    })
+                
+                # Use same data for plot and CSV
+                plot_style_word_probabilities(combined_probs, probs_base, style_token_ids, style_words, 
+                                           step, tokenizer, next_token_id, selected_id)
+                all_steps_data.extend(word_probs)
+
             if(new_model_weight):
                 probs = probs + probs_base
             else:
@@ -168,10 +282,16 @@ def custom_generate_original(model, input_ids, attention_mask, max_length, repet
             generated_ids = torch.cat((generated_ids, eos_tensor), dim=1)
             break
 
+    # Save all steps data to a single CSV at the end
+    if all_steps_data:
+        df = pd.DataFrame(all_steps_data)
+        os.makedirs('./probability_plots', exist_ok=True)
+        df.to_csv(f'./probability_plots/sample_{selected_id}_all_steps_probs.csv', index=False)
+
     return generated_ids[:, input_size:]
 
 def get_eval_dat_per_model(tokenizer, eval_model, dat_loader, device, input_size, meaning_to_references,
-                           max_length=128, repetition_penalty=1.1, bb_model = None, new_model_weight=None, logger=None):
+                           max_length=128, repetition_penalty=1.1, bb_model = None, new_model_weight=None, style_token_ids=None, style_words=None, selected_id=None, logger=None):
     generated_ids_list = []
     mrs = []
     references = []
@@ -186,14 +306,20 @@ def get_eval_dat_per_model(tokenizer, eval_model, dat_loader, device, input_size
                                                     repetition_penalty=repetition_penalty, 
                                                     tokenizer=tokenizer, input_size=input_size,
                                                     new_model_weight = new_model_weight,
-                                                    bb_model = bb_model.module)
+                                                    bb_model = bb_model.module,
+                                                    style_token_ids=style_token_ids,
+                                                    style_words=style_words,
+                                                    selected_id=selected_id)
         else:
             generated_ids = custom_generate_original(eval_model.module, input_ids=input_ids, 
                                                     attention_mask=attention_mask, 
                                                     max_length=max_length, 
                                                     repetition_penalty=repetition_penalty, 
                                                     tokenizer=tokenizer, input_size=input_size, 
-                                                    new_model_weight = new_model_weight)
+                                                    new_model_weight = new_model_weight,
+                                                    style_token_ids=style_token_ids,
+                                                    style_words=style_words,
+                                                    selected_id=selected_id)
             
         generated_ids_list.append(generated_ids)
         mrs.extend(batch["meaning_representation"])
@@ -202,30 +328,10 @@ def get_eval_dat_per_model(tokenizer, eval_model, dat_loader, device, input_size
     generated_ids_tensor = torch.vstack(generated_ids_list)
     predicted_text_list = tokenizer.batch_decode(generated_ids_tensor, skip_special_tokens=True)
     
-    # Post-process the predicted text
-    processed_text_list = []
-    for text in predicted_text_list:
-        first_newline_pos = text.find('\n') # Find the first newline position
-        
-        if first_newline_pos == -1:  # No newline found
-            processed_text_list.append(text)
-            continue
-            
-        # Check if newline is in first 20 tokens (approximating by characters)
-        if first_newline_pos < 20:
-            text = text.replace('\n', '', 1)
-            next_newline = text.find('\n')
-            if next_newline != -1:
-                text = text[:next_newline]
-        else:
-            text = text[:first_newline_pos]
-            
-        processed_text_list.append(text)
-    
     for mr in mrs:
         references.append(meaning_to_references[mr])
     
-    return {'predictions' : processed_text_list, 'meaning_representations' : mrs, 'references' : references}
+    return {'predictions' : predicted_text_list, 'meaning_representations' : mrs, 'references' : references}
 
 def get_ic_prompt(len_context, dat_val, base_model_name, dataset_name, logger):
     context = ""
@@ -296,6 +402,7 @@ def get_ic_prompt(len_context, dat_val, base_model_name, dataset_name, logger):
         if(len_context > 0):
             np.random.seed(42)
             ic_ids = np.random.choice(len(dat_val), len_context)
+            context += "Below are examples of converting given concepts into a coherent sentence.\n\n<start_of_examples>\n\n"
             if(base_model_name == 'gpt2-medium'):
                 for j, i in enumerate(ic_ids):
                     context += (
@@ -313,15 +420,15 @@ def get_ic_prompt(len_context, dat_val, base_model_name, dataset_name, logger):
                     )
             elif('Llama-3.1-8B' in base_model_name):
                 for j, i in enumerate(ic_ids):
-                    static_str_from_prompt = 'Do not provide explanation. Just generate a single coherent sentence based on the following concepts.\n\n'
+                    static_str_from_prompt = 'Please write a coherent sentence that uses all the following concepts.\n\n'
                     # context += f'Example {j+1} --\n'
                     context += (
                         dat_val[int(i)]['meaning_representation'][len(static_str_from_prompt):] + 
                         dat_val[int(i)]['human_reference'] + 
                         '\n\n'
                     )
-                context += 'Consider the above coherent sentences from concepts. Just generate one sentence. '
-    elif(dataset_name == 'nike_products'):
+            context += "<end_of_examples>\n"
+    elif(dataset_name == 'nike'):
         if(len_context > 0):
             np.random.seed(42)
             ic_ids = np.random.choice(len(dat_val), len_context)
@@ -351,6 +458,37 @@ def get_ic_prompt(len_context, dat_val, base_model_name, dataset_name, logger):
                         '\n\n'
                     )
             context += "</examples>\n"
+    elif(dataset_name == 'adidas'):
+        if(len_context > 0):
+            np.random.seed(42)
+            ic_ids = np.random.choice(len(dat_val), len_context)
+            context += "Below are examples of product attributes and their descriptions.\n\n<start_of_examples>\n\n"
+            if(base_model_name == 'gpt2-medium'):
+                for j, i in enumerate(ic_ids):
+                    context += (
+                        dat_val[int(i)]['meaning_representation'] + 
+                        dat_val[int(i)]['human_reference'] + 
+                        '\n'
+                    )
+            elif(base_model_name == 'gpt2-xl'):
+                for j, i in enumerate(ic_ids):
+                    context += (
+                        dat_val[int(i)]['meaning_representation'] + 
+                        '\n' +
+                        dat_val[int(i)]['human_reference'] + 
+                        '\n\n'
+                    )
+            elif('Llama-3.1-8B' in base_model_name):
+                for j, i in enumerate(ic_ids):
+                    # static_str_from_prompt = 'Please write a description of this product. Do not provide explanation.\n\n'
+                    static_str_from_prompt = 'Please write a description of this product given the following attributes.\n\n'
+                    context += f'Attributes:'
+                    context += (
+                        dat_val[int(i)]['meaning_representation'][len(static_str_from_prompt):] + 
+                        dat_val[int(i)]['human_reference'] + 
+                        '\n\n'
+                    )
+            context += "<end_of_examples>\n"
     # logger.info("*************************")
     # logger.info("context: " + context)
     # logger.info("*************************")
@@ -451,10 +589,14 @@ def main():
     logger.info('Tokenizer, base model, and model loaded')
 
     # Load and process datasets
-    if config['data']['dataset_name'] == 'nike_products':
+    if config['data']['dataset_name'] == 'nike':
         # Nike dataset is processed directly from local CSV
-        dataset = process_nike_products("NikeProductDescriptions.csv", config['model']['base_model_for_prompt'])
+        dataset = process_nike("NikeProductDescriptions.csv", config['model']['base_model_for_prompt'])
         logger.info(f"processed nike data with base model prompt {config['model']['base_model_for_prompt']}")
+    elif config['data']['dataset_name'] == 'adidas':
+        # Adidas dataset is processed directly from local CSV
+        dataset = process_adidas("adidas.csv", config['model']['base_model_for_prompt'])
+        logger.info(f"processed adidas data with base model prompt {config['model']['base_model_for_prompt']}")
     elif(config['data']['dataset_name'] == 'web_nlg'):
         # Load and then process web_nlg
         dataset = load_dataset(config['data']['dataset_name'], 'webnlg_challenge_2017', trust_remote_code=True)
@@ -477,31 +619,9 @@ def main():
     # filtering dataset for evaluation
     dataset = dataset[config['data']['evaluate_tag']]
 
-
-    # # loading data
-    # dataset = ProcessedDataset(name=config['data']['dataset_name'])
-    # # processing data
-    # dataset.mapped_tokenize_for_evaluate(tokenizer=tokenizer, input_size=config['data']['input_size'])
-    # print('$$$$', type(dataset.data[config['data']['evaluate_tag']][0]['input_ids']))
-    # # remove_columns = ["meaning_representation", "human_reference"]
-    # # remove_columns = ["human_reference"]
-    # # dataset.remove_cols_in_dict(remove_columns)
-    # logger.info('Dataset loaded and processed')
-
     meaning_to_references = defaultdict(list)
-    # for entry in dataset[config['data']['evaluate_tag']]:
     for entry in dataset:
         meaning_to_references[context + entry["meaning_representation"]].append(entry["human_reference"])
-    # Getting only unique meaning_representations
-
-    # dataset.filter_rows_in_list('meaning_representation', list(meaning_to_references.keys()))
-
-    # dataset.map_convert_to_tensors()
-    # print('####', type(dataset.data[config['data']['evaluate_tag']][0]['input_ids']))
-    # print('####', dataset.data[config['data']['evaluate_tag']][0])
-
-    # for ke in dataset.data.keys():
-    #     logger.info(f'length of {ke} data: {len(dataset.data[ke])}')
 
     logger.info('Dataset filtered based on unique meaning representation')
 
@@ -510,9 +630,11 @@ def main():
     if(args.len_context > 0):
         input_size += args.len_context*(input_size + config['data']['target_size'])
 
-    # unique_dataset = DictDataset([{'meaning_representation': mr} for mr in meaning_to_references.keys()], tokenizer, input_size)
-    unique_dataset = DictDataset([{'meaning_representation': mr} for mr in list(meaning_to_references.keys())[:50]], ### Only for testing prompt
-                                 tokenizer, input_size)
+    # Get all keys and take the last one
+    all_mrs = list(meaning_to_references.keys())
+    selected_id = 10
+    last_mr = all_mrs[selected_id]
+    unique_dataset = DictDataset([{'meaning_representation': last_mr}], tokenizer, input_size)
 
     # Load BLEU and ROUGE metrics from evaluate library
     bleu_metric = evaluate.load("bleu")
@@ -535,9 +657,19 @@ def main():
     model = model.to(device)
     model = torch.nn.DataParallel(model)
 
+    # Load style words and get their token IDs
+    style_words = load_adidas_style_words('adidas_style_words.txt')
+    style_token_ids = get_token_ids_for_words([word for word, _ in style_words], tokenizer, logger)
+
     output = get_eval_dat_per_model(tokenizer, model, eval_dataloader, device, 
-                                    input_size, meaning_to_references,
-                                    max_length=config['data']['target_size'], bb_model = base_model, new_model_weight=args.new_model_weight, logger=logger)
+                                  input_size, meaning_to_references,
+                                  max_length=config['data']['target_size'], 
+                                  bb_model=base_model, 
+                                  new_model_weight=args.new_model_weight,
+                                  style_token_ids=style_token_ids,
+                                  style_words=style_words,
+                                  selected_id=selected_id,
+                                  logger=logger)
     
     for sel_id in range(len(output['meaning_representations'])):
         logger.info('Select id:  ' + str(sel_id))

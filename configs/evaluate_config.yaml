@@ -1,5 +1,5 @@
 data:
-  dataset_name : 'e2e_nlg_cleaned'
+  dataset_name : 'adidas'
   dataset_version : null
   input_size : 128
   target_size : 64

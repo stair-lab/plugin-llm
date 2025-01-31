@@ -1,10 +1,10 @@
 import pandas as pd
 import torch
 
-from datasets import load_dataset, Dataset, DatasetDict
+from datasets import load_dataset, Dataset, DatasetDict, DownloadConfig
 from sklearn.model_selection import train_test_split
 
-from utils.data_preprocess import process_e2e_nlg_cleaned, process_web_nlg, process_common_gen, process_nike_products
+from utils.data_preprocess import process_e2e_nlg_cleaned, process_web_nlg, process_common_gen, process_nike, process_adidas
 
 class ProcessedDataset():
     def __init__(self, name, base_model_name):
@@ -14,17 +14,22 @@ class ProcessedDataset():
         print("Start loading dataset")
         print("***")
         
-        if(name == 'e2e_nlg_cleaned'):
-            self.data = load_dataset(name, 'webnlg_challenge_2017', trust_remote_code=True)
-            self.data = process_e2e_nlg_cleaned(self.data, self.base_model_name)
+        if(name == 'nike'):
+            self.data = process_nike("NikeProductDescriptions.csv", self.base_model_name)
+        elif(name == 'adidas'):
+            self.data = process_adidas("adidas.csv", self.base_model_name)
         elif(name == 'web_nlg'):
+            self.data = load_dataset("web_nlg", 'webnlg_challenge_2017', trust_remote_code=True)
+        else:
             self.data = load_dataset(name, trust_remote_code=True)
+        
+        if(name == 'web_nlg'):
             self.data = process_web_nlg(self.data, self.base_model_name)
+        elif(name == 'e2e_nlg_cleaned'):
+            self.data = process_e2e_nlg_cleaned(self.data, self.base_model_name)
         elif(name == 'common_gen'):
-            self.data = load_dataset(name, trust_remote_code=True)
             self.data = process_common_gen(self.data, self.base_model_name)
-        elif(name == 'nike_products'):
-            self.data = process_nike_products("NikeProductDescriptions.csv", self.base_model_name)
+            
         print("***")
         print("Finish loading dataset")
         print("***")
@@ -320,3 +325,59 @@ class DictDataset(Dataset):
             'attention_mask': tokenized['attention_mask'].squeeze(0),
             'meaning_representation' :   example['meaning_representation']# Remove batch dimension
         }
+
+if __name__ == "__main__":
+    print("\n=== Dataset Size Statistics ===")
+    
+    # CommonGen
+    print("\nCommonGen Dataset:")
+    common_gen_raw = load_dataset("common_gen", trust_remote_code=True)
+    common_gen_processed = ProcessedDataset('common_gen', 'gpt2-medium')
+    print("Raw sizes:")
+    print(f"Train: {len(common_gen_raw['train'])}")
+    print(f"Validation: {len(common_gen_raw['validation'])}")
+    print(f"Test: {len(common_gen_raw['test'])}")
+    print("Processed sizes:")
+    print(f"Train: {len(common_gen_processed.data['train'])} (filtered for 'man')")
+    print(f"Validation: {len(common_gen_processed.data['validation'])}")
+    print(f"Test: {len(common_gen_processed.data['test'])}")
+    
+    # WebNLG
+    print("\nWebNLG Dataset:")
+    webnlg_raw = load_dataset("web_nlg", 'webnlg_challenge_2017', trust_remote_code=True)
+    webnlg_processed = ProcessedDataset('web_nlg', 'gpt2-medium')
+    print("Raw sizes:")
+    print(f"Train: {len(webnlg_raw['train'])}")
+    print(f"Dev: {len(webnlg_raw['dev'])}")
+    print(f"Test: {len(webnlg_raw['test'])}")
+    print("Processed sizes:")
+    print(f"Train: {len(webnlg_processed.data['train'])} (filtered by categories)")
+    print(f"Validation: {len(webnlg_processed.data['validation'])}")
+    print(f"Test: {len(webnlg_processed.data['test'])}")
+    
+    # E2E NLG
+    print("\nE2E NLG Dataset:")
+    e2e_raw = load_dataset("e2e_nlg_cleaned", trust_remote_code=True)
+    e2e_processed = ProcessedDataset('e2e_nlg_cleaned', 'gpt2-medium')
+    print("Raw sizes:")
+    print(f"Train: {len(e2e_raw['train'])}")
+    print(f"Validation: {len(e2e_raw['validation'])}")
+    print(f"Test: {len(e2e_raw['test'])}")
+    print("Processed sizes:")
+    print(f"Train: {len(e2e_processed.data['train'])}")
+    print(f"Validation: {len(e2e_processed.data['validation'])}")
+    print(f"Test: {len(e2e_processed.data['test'])}")
+    
+    # Nike
+    print("\nNike Dataset:")
+    nike_processed = ProcessedDataset('nike', 'gpt2-medium')
+    print("Processed sizes (no raw split):")
+    print(f"Validation: {len(nike_processed.data['validation'])}")
+    print(f"Test: {len(nike_processed.data['test'])} (last 100 examples)")
+    
+    # Adidas
+    print("\nAdidas Dataset:")
+    adidas_processed = ProcessedDataset('adidas', 'gpt2-medium')
+    print("Processed sizes (no raw split):")
+    print(f"Validation: {len(adidas_processed.data['validation'])}")
+    print(f"Test: {len(adidas_processed.data['test'])} (last 100 examples)")

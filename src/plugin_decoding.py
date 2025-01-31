@@ -110,6 +110,18 @@ def main():
     for param in base_model.parameters():
         param.requires_grad = False
     
+    # Print model information
+    logger.info(f"Base model name: {config['model']['base_model_name']}")
+    logger.info(f"Base model parameters: {sum(p.numel() for p in base_model.parameters())}")
+    
+    # Print base model configuration
+    logger.info("Base Model Configuration:")
+    logger.info(f"Hidden size: {base_model.config.hidden_size}")
+    logger.info(f"Number of attention heads: {base_model.config.num_attention_heads}")
+    logger.info(f"Number of layers: {base_model.config.num_hidden_layers}")
+    logger.info(f"Vocabulary size: {base_model.config.vocab_size}")
+    logger.info(f"Full config: {base_model.config}")
+    
     # this is plugin model selection
     if(args.model_type == 'gpt2'):
         if(config['plugin_model']['gpt2']['name']):
@@ -118,6 +130,7 @@ def main():
         else:
             logger.info('Loading provided config based model')
             gpt2_tmp_config = GPT2Config(**config['plugin_model']['gpt2'])
+            logger.info(f"Plugin config: {gpt2_tmp_config}")
             model = CustomGPT2ModelBatch(gpt2_tmp_config, base_model)
     elif(args.model_type == 'llama'):
         if(config['plugin_model']['llama']['name']):
@@ -126,8 +139,14 @@ def main():
         else:
             logger.info('Loading provided config based model')
             llama_tmp_config = LlamaConfig(**config['plugin_model']['llama'])
+            logger.info(f"Plugin config: {llama_tmp_config}")
             model = CustomLlamaModelBatchSeparate(llama_tmp_config, tokenizer)
 
+    # Print plugin model parameters and architecture
+    logger.info(f"Plugin model parameters: {sum(p.numel() for p in model.parameters())}")
+    logger.info("Plugin Model Configuration:")
+    logger.info(f"Model architecture: {model}")
+    
     logger.info('Tokenizer and base model loaded')
 
     # loading data

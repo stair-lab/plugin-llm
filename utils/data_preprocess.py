@@ -1,7 +1,18 @@
 import pandas as pd
 import re
-from datasets import concatenate_datasets, DatasetDict, Dataset
+from datasets import load_dataset, concatenate_datasets, DatasetDict, Dataset
 
+def parse_mr_to_string(mr):
+    # Regular expression to capture key-value pairs
+    pattern = r'(\w+)\[([^\]]+)\]'
+    
+    # Find all key-value pairs in the string
+    key_value_pairs = re.findall(pattern, mr)
+    
+    # Create a formatted string of key-value pairs
+    formatted_string = ',\n'.join([f'{key} -- {value}' for key, value in key_value_pairs])
+    
+    return formatted_string
 
 def process_e2e_nlg_cleaned(dataset, base_model_name):
 
@@ -234,18 +245,13 @@ def process_common_gen(dataset, base_model_name):
     def add_input_prompt(examples, base_model_name):
         inp = examples['meaning_representation']
         if('gpt2-medium' in base_model_name):
-            # prefix_str = 'Generate a sentence that includes the following concepts: '
-            # suffix_str = '.\n\nSentence: '
-            # prefix_str = 'One sentence that uses the following concepts, "'
-            # suffix_str = '", is: '
-            prefix_str = 'One sentence that uses all the following concepts: '
+            prefix_str = 'One coherent sentence that uses all the following concepts: '
             suffix_str = ', is: '
         elif('gpt2-xl' in base_model_name):
-            prefix_str = 'One sentence that uses all the following concepts: '
+            prefix_str = 'One coherent sentence that uses all the following concepts: '
             suffix_str = ', is: '
         elif('Llama-3.1-8B' in base_model_name):
-            prefix_str = 'Do not provide explanation. Just generate a single coherent sentence based on the following concepts.\n\nConcepts:\n'
-            # prefix_str = 'Concepts:\n'
+            prefix_str = 'Please write a coherent sentence that uses all the following concepts.\n\nConcepts:\n'
             suffix_str = '\nSentence: '
             # suffix_str = '\nSentence:\n'
         new_input = prefix_str + inp + suffix_str
@@ -259,7 +265,7 @@ def process_common_gen(dataset, base_model_name):
     
     return dataset
 
-def process_nike_products(dataset, base_model_name):
+def process_nike(dataset, base_model_name):
     def convert_to_pair_format(examples):
         # Combine title and subtitle into a meaning representation format
         # Handle cases where subtitle might be missing
@@ -271,24 +277,12 @@ def process_nike_products(dataset, base_model_name):
             'human_reference': examples['Product Description']
         }
     
-    def parse_mr_to_string(mr):
-        # Regular expression to capture key-value pairs
-        pattern = r'(\w+)\[([^\]]+)\]'
-        
-        # Find all key-value pairs in the string
-        key_value_pairs = re.findall(pattern, mr)
-        
-        # Create a formatted string of key-value pairs
-        formatted_string = ',\n'.join([f'{key} -- {value}' for key, value in key_value_pairs])
-        
-        return formatted_string
-    
     # Convert the CSV data into a Dataset
     df = pd.read_csv(dataset)
     
-    # Take last 20 samples for test, rest for validation
-    test_df = df.tail(20)
-    val_df = df.head(len(df) - 20)
+    # Take last 100 samples for test, rest for validation
+    test_df = df.tail(100)
+    val_df = df.head(len(df) - 100)
     
     # Convert to datasets
     val_dataset = Dataset.from_pandas(val_df)
@@ -311,10 +305,11 @@ def process_nike_products(dataset, base_model_name):
             new_input = prefix_str + inp + suffix_str
         elif('gpt2-xl' in base_model_name):
             prefix_str = 'Given the following attributes of a sport product:\n'
-            suffix_str = ',\nhow would you write an advertising description of the sport product? Do not provide explanation.\n'
+            suffix_str = ',\nPlease write an advertising description of this sport product. '
+            suffix_str+= 'Do not provide explanation or ask questions.\n'
             new_input = prefix_str + parse_mr_to_string(inp) + suffix_str
         elif('Llama-3.1-8B' in base_model_name):
-            prefix_str = 'Please write an advertising description of this sport product. Do not provide explanation.\n\nAttributes:\n'
+            prefix_str = 'Please write an advertising description of this sport product. '
             suffix_str = '\n\nAdvertising description:\n'
             new_input = prefix_str + parse_mr_to_string(inp) + suffix_str
         else:
@@ -331,19 +326,66 @@ def process_nike_products(dataset, base_model_name):
     
     return dataset
 
-if __name__ == "__main__":
-    # Load and process the dataset
-    dataset = process_nike_products("NikeProductDescriptions.csv", "gpt2-medium")
+def process_adidas(dataset, base_model_name):
+    def convert_to_pair_format(examples):
+        # Combine title and subtitle into a meaning representation format
+        # Handle cases where subtitle might be missing
+        name = examples['name'] if examples['name'] else "None"
+        category = examples['category'] if examples['category'] else "None"
+        price = examples['selling_price'] if examples['selling_price'] else "None"
+        color = examples['color'] if examples['color'] else "None"
+        
+        mr = f"name[{name}], category[{category}], price[{price}], color[{color}]"
+        
+        return {
+            'meaning_representation': mr,
+            'human_reference': examples['description']
+        }
     
-    # Print some statistics
-    print("\nDataset sizes:")
-    print(f"Validation: {len(dataset['validation'])} samples")
-    print(f"Test: {len(dataset['test'])} samples")
+    # Convert the CSV data into a Dataset
+    df = pd.read_csv(dataset)
     
-    # Show a few examples
-    print("\nSample from training set:")
-    for i in range(3):
-        print(f"\nExample {i+1}:")
-        print("Meaning Representation:", dataset['test'][i]['meaning_representation'])
-        print("Human Reference:", dataset['test'][i]['human_reference'])
-        print("-" * 100)
+    # Take last 100 samples for test, rest for validation
+    test_df = df.tail(100)
+    val_df = df.head(len(df) - 100)
+    
+    # Convert to datasets
+    val_dataset = Dataset.from_pandas(val_df)
+    test_dataset = Dataset.from_pandas(test_df)
+    
+    # Convert format
+    val_dataset = val_dataset.map(convert_to_pair_format)
+    test_dataset = test_dataset.map(convert_to_pair_format)
+    
+    dataset = DatasetDict({
+        'validation': val_dataset,
+        'test': test_dataset
+    })
+    
+    def add_input_prompt(examples, base_model_name):
+        inp = examples['meaning_representation']
+        if('gpt2-medium' in base_model_name):
+            prefix_str = 'Given the following attributes of a product, write a description.\n\n'
+            suffix_str = '\n\nDescription:'
+            new_input = prefix_str + inp + suffix_str
+        elif('gpt2-xl' in base_model_name):
+            prefix_str = 'Given the following attributes of a product, write a description.\n\n'
+            suffix_str = '\n\nDescription:'
+            new_input = prefix_str + parse_mr_to_string(inp) + suffix_str
+        elif('Llama-3.1-8B' in base_model_name):
+            prefix_str = 'Please write a description of this product given the following attributes.\n\n'
+            suffix_str = '\n\nDescription:\n'
+            new_input = prefix_str + parse_mr_to_string(inp) + suffix_str
+        else:
+            prefix_str = ''
+            suffix_str = ''
+            new_input = prefix_str + inp + suffix_str
+        
+        return {'meaning_representation': new_input}
+    
+    fn_kwargs_dict={"base_model_name": base_model_name}
+
+    dataset['validation'] = dataset['validation'].map(add_input_prompt, fn_kwargs=fn_kwargs_dict)
+    dataset['test'] = dataset['test'].map(add_input_prompt, fn_kwargs=fn_kwargs_dict)
+    
+    return dataset
