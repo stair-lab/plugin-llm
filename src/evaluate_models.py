@@ -120,32 +120,6 @@ class DictDataset(Dataset):
         """
         example = self.data_list[idx]
         
-        # # Tokenize the 'meaning_representation' on the fly
-        # tokenized = tokenize_function(example, self.tokenizer)
-        # inputs = f'<bos> {example["meaning_representation"]} <eos>'
-        # inputs = f"Question: Generate a natural language sentence from the following aspects: {example['meaning_representation']}" + "\nAnswer:"
-        # if(self.base_model_name):
-        #     if('gpt2-medium' in self.base_model_name):
-        #         prefix_str = 'Given the following aspects of a restaurant, "'
-        #         suffix_str = '", a natural language sentence describing the restuarant is: '
-        #     elif('Llama-3.1-8B' in self.base_model_name):
-        #         prefix_str = 'Question: Given the following attributes of a restaurant, "'
-        #         suffix_str = '", how would you describe the restaurant based on the attributes? Just provide the description with no explanation.\nAnswer: '
-        #     else:
-        #         prefix_str = ''
-        #         suffix_str = ''
-        # else:
-        #     if(self.model_type == 'gpt2'):
-        #         prefix_str = 'Given the following aspects of a restaurant, "'
-        #         suffix_str = '", a natural language sentence describing the restuarant is: '
-        #     elif(self.model_type == 'llama'):
-        #         prefix_str = 'Question: Given the following attributes of a restaurant, "'
-        #         suffix_str = '", how would you describe the restaurant based on the attributes? Just provide the description with no explanation.\nAnswer: '
-        #     else:
-        #         prefix_str = ''
-        #         suffix_str = ''
-        # inputs = prefix_str + example["meaning_representation"] + suffix_str
-        # inputs = f'{example["meaning_representation"]}'
         tokenized = self.tokenizer(example["meaning_representation"], return_tensors="pt", 
                                    max_length=self.input_size, truncation=True, padding="max_length")
         
@@ -716,14 +690,6 @@ def main():
     nist_score = nist_metric.evaluate(predictions=filtered_preds, references=filtered_refs)
     logger.info(f"NIST Score: {np.round(nist_score['nist']['score'], 4)}")
 
-
-    # # Display the BLEU, ROUGE, and METEOR scores
-    # logger.info(f"BLEU Score: {np.round(bleu_score['bleu'], 4)}")
-    # for ke in rouge_score.keys():
-    #     logger.info(f"{ke}: {np.round(rouge_score[ke], 4)}")
-    # logger.info(f"METEOR Score: {np.round(meteor_score['meteor'], 4)}")
-    # logger.info(f"NIST Score: {np.round(nist_score['nist']['score'], 4)}")
-    # logger.info(f"CIDEr Score: {np.round(cider_score, 4)}")
 
     logger.info('Evaluation Complete.')
 

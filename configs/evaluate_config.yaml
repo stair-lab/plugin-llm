@@ -11,7 +11,7 @@ model:
   # base_model_for_prompt : 'gpt2-medium' # 'gpt2-medium' # 'gpt2-xl' # 'meta-llama/Llama-3.1-8B'
 
 
-access_token: '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'
+access_token: '...'
 
 results_dir : './results/'
 logs_dir : './evaluation/'

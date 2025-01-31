@@ -10,8 +10,6 @@ logs/
 results/
 models/
 evaluation/
-bin_mila/
-bin_narval/
 probability_plots/
 utils/adidas_style.py
 utils/analyze_plugin_probs.py

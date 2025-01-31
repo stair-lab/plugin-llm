@@ -103,13 +103,8 @@ def main():
             base_model.to('cuda:3')
         else:
             base_model = AutoModelForCausalLM.from_pretrained(config['model']['base_model_name'], token = config['access_token'])
-    # if(config['model']['base_model_name'] == 'gpt2-medium'):
-    #     tokenizer = AutoTokenizer.from_pretrained(config['model']['base_model_name'])
-    #     base_model = AutoModelForCausalLM.from_pretrained(config['model']['base_model_name'])
-    # else:
-    #     model_path = os.path.join(config['models_dir'], config['model']['base_model_name'])
-    #     tokenizer = AutoTokenizer.from_pretrained(model_path)
-    #     base_model = AutoModelForCausalLM.from_pretrained(model_path)
+
+
     tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = config['model']['padding_side']
     for param in base_model.parameters():

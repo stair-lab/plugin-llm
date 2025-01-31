@@ -265,67 +265,6 @@ def process_common_gen(dataset, base_model_name):
     
     return dataset
 
-def process_nike(dataset, base_model_name):
-    def convert_to_pair_format(examples):
-        # Combine title and subtitle into a meaning representation format
-        # Handle cases where subtitle might be missing
-        subtitle = examples['Subtitle'] if examples['Subtitle'] else "None"
-        mr = f"title[{examples['Title']}], type[{subtitle}]"
-        
-        return {
-            'meaning_representation': mr,
-            'human_reference': examples['Product Description']
-        }
-    
-    # Convert the CSV data into a Dataset
-    df = pd.read_csv(dataset)
-    
-    # Take last 100 samples for test, rest for validation
-    test_df = df.tail(100)
-    val_df = df.head(len(df) - 100)
-    
-    # Convert to datasets
-    val_dataset = Dataset.from_pandas(val_df)
-    test_dataset = Dataset.from_pandas(test_df)
-    
-    # Convert format
-    val_dataset = val_dataset.map(convert_to_pair_format)
-    test_dataset = test_dataset.map(convert_to_pair_format)
-    
-    dataset = DatasetDict({
-        'validation': val_dataset,
-        'test': test_dataset
-    })
-
-    def add_input_prompt(examples, base_model_name):
-        inp = examples['meaning_representation']
-        if('gpt2-medium' in base_model_name):
-            prefix_str = 'Given the following attributes of a sport product, "'
-            suffix_str = '", an advertising description about this product is: '
-            new_input = prefix_str + inp + suffix_str
-        elif('gpt2-xl' in base_model_name):
-            prefix_str = 'Given the following attributes of a sport product:\n'
-            suffix_str = ',\nPlease write an advertising description of this sport product. '
-            suffix_str+= 'Do not provide explanation or ask questions.\n'
-            new_input = prefix_str + parse_mr_to_string(inp) + suffix_str
-        elif('Llama-3.1-8B' in base_model_name):
-            prefix_str = 'Please write an advertising description of this sport product. '
-            suffix_str = '\n\nAdvertising description:\n'
-            new_input = prefix_str + parse_mr_to_string(inp) + suffix_str
-        else:
-            prefix_str = ''
-            suffix_str = ''
-            new_input = prefix_str + inp + suffix_str
-        
-        return {'meaning_representation': new_input}
-    
-    fn_kwargs_dict={"base_model_name": base_model_name}
-
-    dataset['validation'] = dataset['validation'].map(add_input_prompt, fn_kwargs=fn_kwargs_dict)
-    dataset['test'] = dataset['test'].map(add_input_prompt, fn_kwargs=fn_kwargs_dict)
-    
-    return dataset
-
 def process_adidas(dataset, base_model_name):
     def convert_to_pair_format(examples):
         # Combine title and subtitle into a meaning representation format
