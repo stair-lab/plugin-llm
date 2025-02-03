@@ -15,20 +15,49 @@ from utils.commons import set_seed
 
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
+import signal
+from accelerate import Accelerator  # Add this new import
+
+def signal_handler(signum, frame):
+    try:
+        logger.info(f"Signal {signum} received. Saving model checkpoint...")
+        trainer.save_state()
+        trainer.save_model()
+        logger.info("Checkpoint saved. Exiting...")
+    except Exception as e:
+        logger.error(f"Error during checkpoint saving: {str(e)}")
+    finally:
+        sys.exit(0)
 
 def main():
+    # Initialize accelerator before model creation
+    accelerator = Accelerator()
+    
+    # First declare globals
+    global trainer, logger, sys
+    
+    # Then initialize logger
+    logger = logging.getLogger(__name__)
+    
+    # Register signal handler after logger initialization but before training
+    if accelerator.is_main_process:
+        signal.signal(signal.SIGTERM, signal_handler)
     parser = argparse.ArgumentParser(description="Fine-tuning base model on the task.")
     parser.add_argument("--model_type", type=str, default='gpt2', help="Plugin and base model type")
     parser.add_argument("--learning_rate", type=float, default=5e-6, help="Learning rate of the model")
     parser.add_argument("--batch_size", type=int, default=8, help="Batch size of training and evaluation")
     parser.add_argument("--weight_decay", type=float, default=0.1, help="Weight decay parameter")
     parser.add_argument("--random_seed", type=int, default=42, help="Seed to use")
+    parser.add_argument("--trained_model_name", type=str, help="Name for the trained model (overrides config)")
+    parser.add_argument("--base_model_name", type=str, help="Name of the base model (overrides config)")
     args = parser.parse_args()
 
     set_seed(args.random_seed)
 
-    with open("../configs/plugin_config.yaml", "r") as file:
+    with open("./configs/plugin_config.yaml", "r") as file:
         config = yaml.safe_load(file)
+        config['model']['trained_model_name'] = args.trained_model_name
+        config['model']['base_model_name'] = args.base_model_name
 
     model_name_list = [
         str(config['model']['trained_model_name']), 
@@ -66,7 +95,7 @@ def main():
     except OSError:
         if(args.model_type == 'llama'): # only done for LLama
             base_model = AutoModelForCausalLM.from_pretrained(config['model']['base_model_name'], token = config['access_token'], torch_dtype=torch.float16)
-            base_model.to('cuda:7')
+            base_model.to('cuda:3')
         else:
             base_model = AutoModelForCausalLM.from_pretrained(config['model']['base_model_name'], token = config['access_token'])
     # if(config['model']['base_model_name'] == 'gpt2-medium'):
@@ -81,6 +110,18 @@ def main():
     for param in base_model.parameters():
         param.requires_grad = False
     
+    # Print model information
+    logger.info(f"Base model name: {config['model']['base_model_name']}")
+    logger.info(f"Base model parameters: {sum(p.numel() for p in base_model.parameters())}")
+    
+    # Print base model configuration
+    logger.info("Base Model Configuration:")
+    logger.info(f"Hidden size: {base_model.config.hidden_size}")
+    logger.info(f"Number of attention heads: {base_model.config.num_attention_heads}")
+    logger.info(f"Number of layers: {base_model.config.num_hidden_layers}")
+    logger.info(f"Vocabulary size: {base_model.config.vocab_size}")
+    logger.info(f"Full config: {base_model.config}")
+    
     # this is plugin model selection
     if(args.model_type == 'gpt2'):
         if(config['plugin_model']['gpt2']['name']):
@@ -89,6 +130,7 @@ def main():
         else:
             logger.info('Loading provided config based model')
             gpt2_tmp_config = GPT2Config(**config['plugin_model']['gpt2'])
+            logger.info(f"Plugin config: {gpt2_tmp_config}")
             model = CustomGPT2ModelBatch(gpt2_tmp_config, base_model)
     elif(args.model_type == 'llama'):
         if(config['plugin_model']['llama']['name']):
@@ -97,8 +139,14 @@ def main():
         else:
             logger.info('Loading provided config based model')
             llama_tmp_config = LlamaConfig(**config['plugin_model']['llama'])
+            logger.info(f"Plugin config: {llama_tmp_config}")
             model = CustomLlamaModelBatchSeparate(llama_tmp_config, tokenizer)
 
+    # Print plugin model parameters and architecture
+    logger.info(f"Plugin model parameters: {sum(p.numel() for p in model.parameters())}")
+    logger.info("Plugin Model Configuration:")
+    logger.info(f"Model architecture: {model}")
+    
     logger.info('Tokenizer and base model loaded')
 
     # loading data
@@ -203,7 +251,21 @@ def main():
     )
 
     logger.info('Training the model...')
-    trainer.train()
+    # Look for existing checkpoint
+    last_checkpoint = None
+    checkpoint_dir = os.path.join(config['results_dir'], model_name)
+    if os.path.exists(checkpoint_dir):
+        checkpoints = [f for f in os.listdir(checkpoint_dir) if 'checkpoint' in f]
+        if checkpoints:
+            # Sort checkpoints by modification time
+            last_checkpoint = os.path.join(
+                checkpoint_dir,
+                sorted(checkpoints, key=lambda x: os.path.getmtime(os.path.join(checkpoint_dir, x)))[-1]
+            )
+            logger.info(f"Found checkpoint: {last_checkpoint}")
+            
+    # Start or resume training
+    trainer.train(resume_from_checkpoint=last_checkpoint)
 
     model.save_pretrained(os.path.join(config['models_dir'], model_name))
     tokenizer.save_pretrained(os.path.join(config['models_dir'], model_name))

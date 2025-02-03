@@ -1,26 +1,38 @@
 import pandas as pd
 import torch
 
-from datasets import load_dataset, Dataset, DatasetDict
+from datasets import load_dataset, Dataset, DatasetDict, DownloadConfig
 from sklearn.model_selection import train_test_split
 
-from utils.data_preprocess import process_e2e_nlg_cleaned, process_web_nlg, process_common_gen
+from utils.data_preprocess import process_e2e_nlg_cleaned, process_web_nlg, process_common_gen, process_nike, process_adidas
 
 class ProcessedDataset():
     def __init__(self, name, base_model_name):
         self.name = name
         self.base_model_name = base_model_name
-        if(name == 'web_nlg'):
-            self.data = load_dataset(name, 'webnlg_challenge_2017', trust_remote_code=True)
+        print("***")
+        print("Start loading dataset")
+        print("***")
+        
+        if(name == 'nike'):
+            self.data = process_nike("NikeProductDescriptions.csv", self.base_model_name)
+        elif(name == 'adidas'):
+            self.data = process_adidas("adidas.csv", self.base_model_name)
+        elif(name == 'web_nlg'):
+            self.data = load_dataset("web_nlg", 'webnlg_challenge_2017', trust_remote_code=True)
         else:
             self.data = load_dataset(name, trust_remote_code=True)
         
-        if(name == 'e2e_nlg_cleaned'):
-            self.data = process_e2e_nlg_cleaned(self.data, self.base_model_name)
-        elif(name == 'web_nlg'):
+        if(name == 'web_nlg'):
             self.data = process_web_nlg(self.data, self.base_model_name)
+        elif(name == 'e2e_nlg_cleaned'):
+            self.data = process_e2e_nlg_cleaned(self.data, self.base_model_name)
         elif(name == 'common_gen'):
             self.data = process_common_gen(self.data, self.base_model_name)
+            
+        print("***")
+        print("Finish loading dataset")
+        print("***")
 
     # Preprocess the dataset to include the meaning representation (MR) as input and human reference as target
     def preprocess_sep_input_target(self, examples, tokenizer, 
@@ -104,7 +116,7 @@ class ProcessedDataset():
         inputs = examples["meaning_representation"]
         targets = examples["human_reference"]
 
-        # Tokenize the targets (human references)
+        # Tokenize the inputs (meaning representations)
         tokenized_inputs = tokenizer(
             inputs, add_special_tokens=True, max_length = input_size, truncation=True, 
         )

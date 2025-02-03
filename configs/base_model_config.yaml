@@ -19,6 +19,6 @@ model:
   padding_side : 'left'
   print_prediction_flag : False
 
-results_dir : '../results/'
-logs_dir : '../logs/'
-models_dir : '../models/'
+results_dir : './results/'
+logs_dir : './logs/'
+models_dir : './models/'

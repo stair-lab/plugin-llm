@@ -1,5 +1,5 @@
 data:
-  dataset_name : 'e2e_nlg_cleaned'
+  dataset_name : 'adidas'
   dataset_version : null
   input_size : 128
   target_size : 64
@@ -7,10 +7,12 @@ data:
 
 model:
   padding_side : 'left'
-  base_model_for_prompt : 'gpt2-xl' # 'gpt2-medium' # 'gpt2-xl' # 'meta-llama/Llama-3.1-8B'
+  # Updated to automatically determine the base model for prompt
+  # base_model_for_prompt : 'gpt2-medium' # 'gpt2-medium' # 'gpt2-xl' # 'meta-llama/Llama-3.1-8B'
+
 
 access_token: '...'
 
-results_dir : '../results/'
-logs_dir : '../logs/evaluation/'
-models_dir : '../models/'
+results_dir : './results/'
+logs_dir : './evaluation/'
+models_dir : './models/'
