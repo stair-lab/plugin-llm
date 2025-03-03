@@ -1,12 +1,9 @@
 #!/bin/bash
 
 # Hyperparameter search space
-learning_rates=(5e-4 5e-3)
+learning_rates=(5e-5 5e-4 5e-3)
 weight_decays=(10 1 0.1 0.01)
-new_model_weights=(1)
-# learning_rates=(5e-5 5e-4)
-# weight_decays=(10 1 0.1)
-# new_model_weights=(0.75 0.50 0.25)
+new_model_weights=(0.75 0.50 0.25)
 
 # Seed for reproducibility
 seed=42

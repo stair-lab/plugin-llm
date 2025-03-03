@@ -3,8 +3,6 @@
 # Hyperparameter search space
 learning_rates=(5e-5 5e-4 5e-3)
 weight_decays=(10 1 0.1 0.01)
-# learning_rates=(5e-6)
-# weight_decays=(1)
 
 # Seed for reproducibility
 seed=42

@@ -9,8 +9,8 @@ data:
   validation_tag : null
 
 model:
-  # trained_model_name : 'nike_products_plugin_gpt2-medium_1layer'
-  # base_model_name : 'gpt2-medium' # meta-llama/Llama-3.1-8B, gpt2-medium, gpt2-xl
+  trained_model_name : 'e2e_nlg_plugin_gpt2-xl_1layer'
+  base_model_name : 'gpt2-xl' # meta-llama/Llama-3.1-8B, gpt2-medium, gpt2-xl
   num_train_epochs : 80
   early_stopping_flag : True
   early_stopping_patience : 5
@@ -29,7 +29,7 @@ plugin_model:
     intermediate_size : 1024
   gpt2:
     name : null
-    n_layer : 8
+    n_layer : 1
 
 access_token: '...'
 
