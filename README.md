@@ -1,4 +1,11 @@
-# Code for paper: Logits are All We Need to Adapt Closed Models
+# Logits are All We Need to Adapt Closed Models
+
+🔒 Many commercial Large Language Models (LLMs), e.g., GPT-4, are closed-source, limiting developers to steer content generation. 
+
+🤔 Can we adapt ***closed-source*** LLMs for specialized tasks when fine-tuning or accessing their internal weights is not possible?
+
+✅ Our answer: **Yes, using only token logits!**
+<img src="img/model.png">
 
 This repository contains shell scripts for setting up, training, evaluating, and comparing various models efficiently.
 
@@ -6,7 +13,7 @@ This repository contains shell scripts for setting up, training, evaluating, and
 
 Many commercial Large Language Models (LLMs) are often closed-source, limiting developers to prompt tuning for aligning content generation with specific applications. While these models currently do not provide access to token logits, we argue that if such access were available, it would enable more powerful adaptation techniques beyond prompt engineering. In this paper, we propose a token-level probability reweighting framework that, given access to logits and a small amount of task-specific data, can effectively steer black-box LLMs toward application-specific content generation. Our approach views next-token prediction through the lens of supervised classification. We show that aligning black-box LLMs with task-specific data can be formulated as a label noise correction problem, leading to ***Plugin*** model -- an autoregressive probability reweighting model that operates solely on logits. We provide theoretical justification for why reweighting logits alone is sufficient for task adaptation. Extensive experiments with multiple datasets, LLMs, and reweighting models demonstrate the effectiveness of our method, advocating for broader access to token logits in closed-source models.
 
-<img src="img/model.png">
+
 <img src="img/adaption.png">
 
 ## Overview and Usage
