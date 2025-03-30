@@ -604,8 +604,8 @@ def main():
         logger.info(f"processed web_nlg data with base model prompt {config['model']['base_model_for_prompt']}")
     elif(config['data']['dataset_name'] == 'e2e_nlg_cleaned'):
         # Load and then process e2e
-        dataset = load_dataset(config['data']['dataset_name'], trust_remote_code=True)
-        dataset = process_e2e_nlg_cleaned(dataset, config['model']['base_model_for_prompt'])
+        # dataset = load_dataset(config['data']['dataset_name'], trust_remote_code=True)
+        dataset = process_e2e_nlg_cleaned("e2e_nlg_cleaned.csv", config['model']['base_model_for_prompt'])
         logger.info(f"processed e2e data with base model prompt {config['model']['base_model_for_prompt']}")
     elif(config['data']['dataset_name'] == 'common_gen'):
         # Load and then process common_gen
