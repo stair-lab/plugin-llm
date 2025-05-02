@@ -1,4 +1,4 @@
-# Logits are All We Need to Adapt Closed Models [Accepted to ICML 2025]
+# Logits are All We Need to Adapt Closed Models [🎉 Accepted to ICML 2025]
 
 🔒 Many commercial Large Language Models (LLMs), e.g., GPT-4, are closed-source, limiting developers to steer content generation. 
 
